@@ -26,7 +26,8 @@ interface TaskDetailDrawerProps {
   groups: (Group & { tags: Tag[] })[];
   isOpen: boolean;
   onClose: () => void;
-  onRefresh: () => void;
+  onRefresh?: () => void;
+  onSuccess?: () => void;
 }
 
 export function TaskDetailDrawer({
@@ -35,7 +36,12 @@ export function TaskDetailDrawer({
   isOpen,
   onClose,
   onRefresh,
+  onSuccess,
 }: TaskDetailDrawerProps) {
+  const triggerRefresh = () => {
+    if (onRefresh) onRefresh();
+    if (onSuccess) onSuccess();
+  };
   const { timer, startTimerApi, stopTimerApi } = useAppStore();
 
   const [title, setTitle] = useState("");
@@ -72,7 +78,7 @@ export function TaskDetailDrawer({
         notion_content: notionContent,
       }),
     });
-    onRefresh();
+    triggerRefresh();
   };
 
   // Update specific property immediately
@@ -83,13 +89,13 @@ export function TaskDetailDrawer({
       method: "PATCH",
       body: JSON.stringify(updates),
     });
-    onRefresh();
+    triggerRefresh();
   };
 
   const handleDelete = async () => {
     if (!confirm("Bạn có chắc chắn muốn xóa công việc này?")) return;
     await apiClient(`/api/tasks/${task.id}`, { method: "DELETE" });
-    onRefresh();
+    triggerRefresh();
     onClose();
   };
 
@@ -120,7 +126,7 @@ export function TaskDetailDrawer({
                 <button
                   onClick={async () => {
                     await stopTimerApi();
-                    onRefresh();
+                    triggerRefresh();
                   }}
                   className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 font-semibold text-xs flex items-center gap-1.5 transition-all"
                 >
@@ -131,7 +137,7 @@ export function TaskDetailDrawer({
                   onClick={async () => {
                     await startTimerApi(task.id, task.title);
                     setStatus("in_progress");
-                    onRefresh();
+                    triggerRefresh();
                   }}
                   className="px-3 py-1 rounded-lg bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all"
                 >
