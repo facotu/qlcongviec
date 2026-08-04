@@ -203,9 +203,9 @@ export default function KnowledgeChatPage() {
                           <span className="font-mono text-[10px] text-indigo-300 font-bold">
                             [{c.sourceNumber}] Match {c.similarity}%
                           </span>
-                          {c.metadata?.taskId && (
+                          {Boolean(c.metadata?.taskId) && (
                             <span className="font-mono text-[9px] text-slate-500">
-                              Task ID: {String(c.metadata.taskId).slice(0, 8)}...
+                              Task ID: {String(c.metadata?.taskId).slice(0, 8)}...
                             </span>
                           )}
                         </div>
