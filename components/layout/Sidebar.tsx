@@ -25,6 +25,9 @@ import {
   XCircle,
   Plus,
   Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Folder,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -38,6 +41,30 @@ export function Sidebar() {
     theme,
     toggleTheme,
   } = useAppStore();
+
+  // Sidebar Collapse & Hover State
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Sync initial collapse state from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("ql_sidebar_collapsed");
+      if (saved === "true") setIsCollapsed(true);
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ql_sidebar_collapsed", String(next));
+      }
+      return next;
+    });
+  };
+
+  const isExpanded = !isCollapsed || isHovered;
 
   // Dynamic Groups State from API
   const [groups, setGroups] = useState<(Group & { tags: Tag[] })[]>([]);
@@ -57,7 +84,6 @@ export function Sidebar() {
     const res = await apiClient<(Group & { tags: Tag[] })[]>("/api/groups");
     if (res.data) {
       setGroups(res.data);
-      // Auto open all groups on initial load
       setOpenGroupIds(res.data.map((g) => g.id));
     }
     setIsLoading(false);
@@ -119,34 +145,65 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="w-72 bg-slate-950 dark:bg-slate-950 light:bg-white border-r border-slate-800/80 light:border-slate-200 flex flex-col h-screen select-none transition-colors duration-200">
-        {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800/80 light:border-slate-200 flex items-center justify-between">
-          <Link href="/tasks" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform">
+      <aside
+        onMouseEnter={() => isCollapsed && setIsHovered(true)}
+        onMouseLeave={() => isCollapsed && setIsHovered(false)}
+        className={`bg-slate-950 dark:bg-slate-950 light:bg-white border-r border-slate-800/80 light:border-slate-200 flex flex-col h-screen select-none transition-all duration-300 ease-in-out relative z-40 shadow-2xl ${
+          isExpanded ? "w-72" : "w-20"
+        }`}
+      >
+        {/* Brand Header & Collapse Toggle */}
+        <div className="p-4 border-b border-slate-800/80 light:border-slate-200 flex items-center justify-between">
+          <Link href="/tasks" className="flex items-center gap-2.5 group overflow-hidden">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform flex-shrink-0">
               <Layers className="w-4 h-4" />
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-slate-100 light:text-slate-900 group-hover:text-indigo-400 transition-colors">
-                QLCôngViệc
-              </h1>
-              <span className="text-[10px] text-slate-400 light:text-slate-500 font-mono block -mt-0.5">
-                Clean Architecture
-              </span>
-            </div>
+            {isExpanded && (
+              <div className="transition-all duration-200 whitespace-nowrap">
+                <h1 className="font-extrabold text-sm tracking-tight text-slate-100 light:text-slate-900 group-hover:text-indigo-400 transition-colors">
+                  QLCôngViệc
+                </h1>
+                <span className="text-[10px] text-slate-400 light:text-slate-500 font-mono block -mt-0.5">
+                  Clean Architecture
+                </span>
+              </div>
+            )}
           </Link>
+
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={toggleCollapse}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900 light:hover:bg-slate-100 transition-colors"
+            title={isCollapsed ? "Mở rộng Sidebar (Hover để xem)" : "Thu gọn Sidebar"}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
         </div>
 
         {/* Sidebar Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-800">
+        <div className="flex-1 overflow-y-auto p-3 space-y-6 scrollbar-thin scrollbar-thumb-slate-800">
           {/* 1. Active Timer Widget */}
-          <ActiveTimerWidget />
+          {isExpanded ? (
+            <ActiveTimerWidget />
+          ) : (
+            <div className="flex justify-center" title="Active Timer đang đếm">
+              <div className="w-10 h-10 rounded-xl bg-indigo-950/60 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-mono text-xs font-bold shadow-md animate-pulse">
+                ⏱
+              </div>
+            </div>
+          )}
 
           {/* 2. Main Navigation Menu */}
           <div className="space-y-1">
-            <span className="px-3 text-[11px] font-bold text-slate-400 light:text-slate-500 uppercase tracking-wider block mb-2">
-              Điều hướng
-            </span>
+            {isExpanded && (
+              <span className="px-3 text-[11px] font-bold text-slate-400 light:text-slate-500 uppercase tracking-wider block mb-2 transition-all">
+                Điều hướng
+              </span>
+            )}
             {navMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -154,19 +211,24 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  title={!isExpanded ? item.label : undefined}
+                  className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isActive
                       ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-bold"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 light:text-slate-600 light:hover:bg-slate-100"
-                  }`}
+                  } ${!isExpanded ? "justify-center" : ""}`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                    {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
                   </div>
                   {item.badge && (
-                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center animate-pulse">
-                      {item.badge}
+                    <span
+                      className={`rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center animate-pulse ${
+                        !isExpanded ? "w-2 h-2 p-0" : "w-4 h-4"
+                      }`}
+                    >
+                      {isExpanded ? item.badge : ""}
                     </span>
                   )}
                 </Link>
@@ -174,40 +236,45 @@ export function Sidebar() {
             })}
           </div>
 
-          {/* 3. Accordion Group & Tag Filtering (Realtime API Connected) */}
+          {/* 3. Accordion Group & Tag Filtering */}
           <div className="space-y-2 pt-2 border-t border-slate-800/60 light:border-slate-200">
-            <div className="flex items-center justify-between px-3">
-              <span className="text-[11px] font-bold text-slate-400 light:text-slate-500 uppercase tracking-wider">
-                Nhóm & Thẻ Tag
-              </span>
+            {isExpanded ? (
+              <div className="flex items-center justify-between px-3">
+                <span className="text-[11px] font-bold text-slate-400 light:text-slate-500 uppercase tracking-wider">
+                  Nhóm & Thẻ Tag
+                </span>
 
-              <div className="flex items-center gap-1">
-                {(selectedGroupId || selectedTagId) && (
+                <div className="flex items-center gap-1">
+                  {(selectedGroupId || selectedTagId) && (
+                    <button
+                      onClick={clearGroupTagFilters}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium mr-1"
+                      title="Bỏ chọn Lọc"
+                    >
+                      <XCircle className="w-3 h-3" />
+                    </button>
+                  )}
+
                   <button
-                    onClick={clearGroupTagFilters}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium mr-1"
-                    title="Bỏ chọn Lọc"
+                    onClick={() => setIsGroupModalOpen(true)}
+                    className="p-1 rounded-lg text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors"
+                    title="Thêm Nhóm công việc"
                   >
-                    <XCircle className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
-                )}
-
-                {/* Add Group Button */}
-                <button
-                  onClick={() => setIsGroupModalOpen(true)}
-                  className="p-1 rounded-lg text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition-colors"
-                  title="Thêm Nhóm công việc"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex justify-center" title="Nhóm & Thẻ Tag">
+                <Folder className="w-4 h-4 text-slate-400" />
+              </div>
+            )}
 
             <div className="space-y-1">
               {isLoading ? (
-                <div className="p-3 text-xs text-slate-500 animate-pulse">Đang tải danh sách...</div>
+                isExpanded && <div className="p-3 text-xs text-slate-500 animate-pulse">Đang tải danh sách...</div>
               ) : groups.length === 0 ? (
-                <div className="p-3 text-xs text-slate-500 text-center">Chưa có Nhóm công việc</div>
+                isExpanded && <div className="p-3 text-xs text-slate-500 text-center">Chưa có Nhóm công việc</div>
               ) : (
                 groups.map((group) => {
                   const isOpen = openGroupIds.includes(group.id);
@@ -218,59 +285,60 @@ export function Sidebar() {
                       {/* Group Header Item */}
                       <div
                         onClick={() => setSelectedGroup(group.id)}
-                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                        title={!isExpanded ? group.name : undefined}
+                        className={`flex items-center justify-between p-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${
                           isGroupSelected
                             ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30"
                             : "text-slate-300 hover:bg-slate-900/40 light:text-slate-700 light:hover:bg-slate-100"
-                        }`}
+                        } ${!isExpanded ? "justify-center" : ""}`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-sm"
+                            className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm"
                             style={{ backgroundColor: group.color || "#6366f1" }}
                           />
-                          <span className="truncate">{group.name}</span>
+                          {isExpanded && <span className="truncate">{group.name}</span>}
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          {/* Add Tag to this Group button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTargetGroupIdForTag(group.id);
-                              setIsTagModalOpen(true);
-                            }}
-                            className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-indigo-400 text-slate-500 transition-opacity"
-                            title="Thêm Tag cho Nhóm này"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
+                        {isExpanded && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTargetGroupIdForTag(group.id);
+                                setIsTagModalOpen(true);
+                              }}
+                              className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-indigo-400 text-slate-500 transition-opacity"
+                              title="Thêm Tag cho Nhóm này"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
 
-                          {/* Delete Group button */}
-                          <button
-                            onClick={(e) => handleDeleteGroup(e, group.id)}
-                            className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-rose-400 text-slate-500 transition-opacity"
-                            title="Xóa Nhóm"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                            <button
+                              onClick={(e) => handleDeleteGroup(e, group.id)}
+                              className="opacity-0 group-hover/item:opacity-100 p-1 hover:text-rose-400 text-slate-500 transition-opacity"
+                              title="Xóa Nhóm"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
 
-                          {isGroupSelected && <Check className="w-3 h-3 text-indigo-400" />}
+                            {isGroupSelected && <Check className="w-3 h-3 text-indigo-400" />}
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleGroupAccordion(group.id);
-                            }}
-                            className="p-1 hover:text-white text-slate-500 transition-colors"
-                          >
-                            {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleGroupAccordion(group.id);
+                              }}
+                              className="p-1 hover:text-white text-slate-500 transition-colors"
+                            >
+                              {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Tag List inside Accordion */}
-                      {isOpen && group.tags && group.tags.length > 0 && (
+                      {isExpanded && isOpen && group.tags && group.tags.length > 0 && (
                         <div className="pl-6 space-y-0.5 border-l border-slate-800/80 ml-4 py-1">
                           {group.tags.map((tag) => {
                             const isTagSelected = selectedTagId === tag.id;
@@ -313,24 +381,33 @@ export function Sidebar() {
         </div>
 
         {/* 4. Bottom Menu & Theme Toggle */}
-        <div className="p-4 border-t border-slate-800/80 light:border-slate-200 space-y-3">
+        <div className="p-3 border-t border-slate-800/80 light:border-slate-200 space-y-3">
           <Link
             href="/settings"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            title={!isExpanded ? "Cài đặt hệ thống" : undefined}
+            className={`flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold transition-all ${
               pathname === "/settings"
                 ? "bg-indigo-600 text-white"
                 : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 light:text-slate-600 light:hover:bg-slate-100"
-            }`}
+            } ${!isExpanded ? "justify-center" : ""}`}
           >
-            <Settings className="w-4 h-4" />
-            <span>Cài đặt hệ thống</span>
+            <div className="flex items-center gap-3">
+              <Settings className="w-4 h-4 flex-shrink-0" />
+              {isExpanded && <span className="whitespace-nowrap">Cài đặt hệ thống</span>}
+            </div>
           </Link>
 
           {/* Theme Switcher */}
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/80 light:bg-slate-100 border border-slate-800/80 light:border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-400 light:text-slate-600 px-2">
-              Giao diện {theme === "dark" ? "Tối" : "Sáng"}
-            </span>
+          <div
+            className={`flex items-center justify-between p-2 rounded-xl bg-slate-900/80 light:bg-slate-100 border border-slate-800/80 light:border-slate-200 ${
+              !isExpanded ? "justify-center" : ""
+            }`}
+          >
+            {isExpanded && (
+              <span className="text-[11px] font-semibold text-slate-400 light:text-slate-600 px-2 whitespace-nowrap">
+                Giao diện {theme === "dark" ? "Tối" : "Sáng"}
+              </span>
+            )}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-lg bg-slate-800 light:bg-white text-indigo-400 hover:text-indigo-300 shadow-sm transition-all flex items-center justify-center"
@@ -354,10 +431,7 @@ export function Sidebar() {
         isOpen={isTagModalOpen}
         groups={groups}
         defaultGroupId={targetGroupIdForTag}
-        onClose={() => {
-          setIsTagModalOpen(false);
-          setTargetGroupIdForTag(null);
-        }}
+        onClose={() => setIsTagModalOpen(false)}
         onSuccess={loadGroups}
       />
     </>
