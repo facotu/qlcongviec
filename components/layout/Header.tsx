@@ -35,8 +35,8 @@ export function Header() {
   const loadNotifications = useCallback(async () => {
     const res = await apiClient<{ data: NotificationItem[]; unreadCount: number }>("/api/notifications");
     if (res.data) {
-      setNotifications(res.data);
-      setUnreadCount(res.unreadCount || 0);
+      setNotifications(res.data.data);
+      setUnreadCount(res.data.unreadCount || 0);
     }
   }, []);
 
