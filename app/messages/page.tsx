@@ -50,23 +50,41 @@ export default function Bitrix24MessengerPage() {
 
   // Load Channels List
   const loadChannels = useCallback(async () => {
-    const res = await apiClient<ChatChannel[]>("/api/chat/channels");
-    if (res.data) setChannels(res.data);
+    const res = await apiClient<{ data: ChatChannel[] } | ChatChannel[]>("/api/chat/channels");
+    if (res.data) {
+      if (Array.isArray(res.data)) {
+        setChannels(res.data);
+      } else if ("data" in res.data && Array.isArray(res.data.data)) {
+        setChannels(res.data.data);
+      }
+    }
   }, []);
 
   // Load Messages for Selected Channel
   const loadMessages = useCallback(async (channelId: string) => {
     setIsLoadingMessages(true);
-    const res = await apiClient<ChatMessage[]>(`/api/chat/messages?channel_id=${channelId}`);
-    if (res.data) setMessages(res.data);
+    const res = await apiClient<{ data: ChatMessage[] } | ChatMessage[]>(`/api/chat/messages?channel_id=${channelId}`);
+    if (res.data) {
+      if (Array.isArray(res.data)) {
+        setMessages(res.data);
+      } else if ("data" in res.data && Array.isArray(res.data.data)) {
+        setMessages(res.data.data);
+      }
+    }
     setIsLoadingMessages(false);
     setTimeout(scrollToBottom, 100);
   }, []);
 
   // Load System Notifications for Notifications Tab
   const loadNotifications = useCallback(async () => {
-    const res = await apiClient<NotificationItem[]>("/api/notifications");
-    if (res.data) setNotifications(res.data);
+    const res = await apiClient<{ data: NotificationItem[] } | NotificationItem[]>("/api/notifications");
+    if (res.data) {
+      if (Array.isArray(res.data)) {
+        setNotifications(res.data);
+      } else if ("data" in res.data && Array.isArray(res.data.data)) {
+        setNotifications(res.data.data);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -134,8 +152,9 @@ export default function Bitrix24MessengerPage() {
     }
   };
 
-  const filteredChannels = channels.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const safeChannels = Array.isArray(channels) ? channels : [];
+  const filteredChannels = safeChannels.filter((c) =>
+    (c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.latestMessage && c.latestMessage.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -366,7 +385,7 @@ export default function Bitrix24MessengerPage() {
               </div>
 
               <div className="space-y-3">
-                {notifications.map((n) => (
+                {(Array.isArray(notifications) ? notifications : []).map((n) => (
                   <div
                     key={n.id}
                     className={`p-4 rounded-xl border transition-colors flex items-start gap-3 ${
@@ -469,7 +488,7 @@ export default function Bitrix24MessengerPage() {
                     Đang tải lịch sử cuộc trò chuyện...
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  (Array.isArray(messages) ? messages : []).map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex items-start gap-3 ${
