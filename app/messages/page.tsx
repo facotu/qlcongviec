@@ -124,11 +124,11 @@ export default function Bitrix24MessengerPage() {
     setIsSending(false);
 
     if (res.data) {
-      if (res.data.aiMessage) {
-        const aiMsg = res.data.aiMessage;
-        setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), res.data.userMessage, aiMsg]);
+      const { userMessage, aiMessage } = res.data;
+      if (aiMessage) {
+        setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), userMessage, aiMessage]);
       } else {
-        setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), res.data.userMessage]);
+        setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), userMessage]);
       }
       setTimeout(scrollToBottom, 100);
     }
