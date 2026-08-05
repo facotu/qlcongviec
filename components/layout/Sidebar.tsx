@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Calendar,
   MessageSquareCode,
+  MessageSquare,
   Tag as TagIcon,
   ChevronDown,
   ChevronRight,
