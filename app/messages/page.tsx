@@ -117,7 +117,7 @@ export default function Bitrix24MessengerPage() {
         senderName: "Người dùng",
         content: userText,
         customApiKey,
-        customSystemPrompt,
+        customSystemPrompt: customPrompt,
       }),
     });
 
