@@ -17,7 +17,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme, setTheme } = useAppStore();
 
   useEffect(() => {
-    // Initial sync with DOM
+    // Load theme from localStorage on initial render
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("ql_theme") as "dark" | "light" | null;
+      if (savedTheme && (savedTheme === "dark" || savedTheme === "light")) {
+        setTheme(savedTheme);
+      }
+    }
+  }, [setTheme]);
+
+  useEffect(() => {
+    // Sync theme class with <html> and <body>
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
@@ -30,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className={theme === "dark" ? "dark" : ""}>{children}</div>
+      <div className={theme === "dark" ? "dark" : "light"}>{children}</div>
     </ThemeContext.Provider>
   );
 }

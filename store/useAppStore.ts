@@ -168,6 +168,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       const nextTheme = state.theme === "dark" ? "light" : "dark";
       if (typeof window !== "undefined") {
+        localStorage.setItem("ql_theme", nextTheme);
         if (nextTheme === "dark") {
           document.documentElement.classList.add("dark");
           document.documentElement.classList.remove("light");
@@ -181,6 +182,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTheme: (theme) =>
     set(() => {
       if (typeof window !== "undefined") {
+        localStorage.setItem("ql_theme", theme);
         if (theme === "dark") {
           document.documentElement.classList.add("dark");
           document.documentElement.classList.remove("light");

@@ -63,11 +63,43 @@ CREATE TABLE IF NOT EXISTS public.vector_embeddings (
     created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+-- 8. Create Table: chat_channels (Bitrix24 Messenger)
+CREATE TABLE IF NOT EXISTS public.chat_channels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    type TEXT CHECK (type IN ('bot', 'news', 'general', 'notes', 'task', 'direct')) DEFAULT 'general' NOT NULL,
+    avatar_url TEXT,
+    description TEXT,
+    unread_count INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- 9. Create Table: chat_messages
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    channel_id UUID REFERENCES public.chat_channels(id) ON DELETE CASCADE NOT NULL,
+    sender_name TEXT NOT NULL,
+    sender_avatar TEXT,
+    content TEXT NOT NULL,
+    is_ai BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- 10. Create Table: notifications (Realtime Activity System)
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    type TEXT CHECK (type IN ('task', 'timer', 'rag', 'system', 'message')) DEFAULT 'system' NOT NULL,
+    is_read BOOLEAN DEFAULT false NOT NULL,
+    link_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
 -- ====================================================================
 -- INDEXES OPTIMIZATION
 -- ====================================================================
 
--- Foreign Key & Query Optimization B-Tree Indexes
 CREATE INDEX IF NOT EXISTS idx_tags_group_id ON public.tags(group_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_group_id ON public.tasks(group_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
@@ -77,8 +109,10 @@ CREATE INDEX IF NOT EXISTS idx_task_tags_tag_id ON public.task_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_time_trackings_task_id ON public.time_trackings(task_id);
 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_task_id ON public.vector_embeddings(task_id);
 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_tag_id ON public.vector_embeddings(tag_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel_id ON public.chat_messages(channel_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
 
--- Vector Search Index (HNSW - Hierarchical Navigable Small World for Cosine Distance)
+-- Vector Search Index (HNSW for Cosine Distance)
 CREATE INDEX IF NOT EXISTS idx_vector_embeddings_hnsw 
 ON public.vector_embeddings 
 USING hnsw (embedding vector_cosine_ops);
@@ -124,90 +158,47 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.task_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_trackings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vector_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Policies for public API access
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to groups') THEN
         CREATE POLICY "Allow public read access to groups" ON public.groups FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to groups') THEN
         CREATE POLICY "Allow public insert access to groups" ON public.groups FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to groups') THEN
         CREATE POLICY "Allow public update access to groups" ON public.groups FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to groups') THEN
         CREATE POLICY "Allow public delete access to groups" ON public.groups FOR DELETE USING (true);
     END IF;
 
-    -- Tags Policies
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to tags') THEN
         CREATE POLICY "Allow public read access to tags" ON public.tags FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to tags') THEN
         CREATE POLICY "Allow public insert access to tags" ON public.tags FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to tags') THEN
         CREATE POLICY "Allow public update access to tags" ON public.tags FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to tags') THEN
         CREATE POLICY "Allow public delete access to tags" ON public.tags FOR DELETE USING (true);
     END IF;
 
-    -- Tasks Policies
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to tasks') THEN
         CREATE POLICY "Allow public read access to tasks" ON public.tasks FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to tasks') THEN
         CREATE POLICY "Allow public insert access to tasks" ON public.tasks FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to tasks') THEN
         CREATE POLICY "Allow public update access to tasks" ON public.tasks FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to tasks') THEN
         CREATE POLICY "Allow public delete access to tasks" ON public.tasks FOR DELETE USING (true);
     END IF;
 
-    -- Task Tags Policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to task_tags') THEN
-        CREATE POLICY "Allow public read access to task_tags" ON public.task_tags FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to task_tags') THEN
-        CREATE POLICY "Allow public insert access to task_tags" ON public.task_tags FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to task_tags') THEN
-        CREATE POLICY "Allow public update access to task_tags" ON public.task_tags FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to task_tags') THEN
-        CREATE POLICY "Allow public delete access to task_tags" ON public.task_tags FOR DELETE USING (true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read chat_channels') THEN
+        CREATE POLICY "Allow public read chat_channels" ON public.chat_channels FOR SELECT USING (true);
+        CREATE POLICY "Allow public insert chat_channels" ON public.chat_channels FOR INSERT WITH CHECK (true);
+        CREATE POLICY "Allow public update chat_channels" ON public.chat_channels FOR UPDATE USING (true);
     END IF;
 
-    -- Time Trackings Policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to time_trackings') THEN
-        CREATE POLICY "Allow public read access to time_trackings" ON public.time_trackings FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to time_trackings') THEN
-        CREATE POLICY "Allow public insert access to time_trackings" ON public.time_trackings FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to time_trackings') THEN
-        CREATE POLICY "Allow public update access to time_trackings" ON public.time_trackings FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to time_trackings') THEN
-        CREATE POLICY "Allow public delete access to time_trackings" ON public.time_trackings FOR DELETE USING (true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read chat_messages') THEN
+        CREATE POLICY "Allow public read chat_messages" ON public.chat_messages FOR SELECT USING (true);
+        CREATE POLICY "Allow public insert chat_messages" ON public.chat_messages FOR INSERT WITH CHECK (true);
     END IF;
 
-    -- Vector Embeddings Policies
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read access to vector_embeddings') THEN
-        CREATE POLICY "Allow public read access to vector_embeddings" ON public.vector_embeddings FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public insert access to vector_embeddings') THEN
-        CREATE POLICY "Allow public insert access to vector_embeddings" ON public.vector_embeddings FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public update access to vector_embeddings') THEN
-        CREATE POLICY "Allow public update access to vector_embeddings" ON public.vector_embeddings FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public delete access to vector_embeddings') THEN
-        CREATE POLICY "Allow public delete access to vector_embeddings" ON public.vector_embeddings FOR DELETE USING (true);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public read notifications') THEN
+        CREATE POLICY "Allow public read notifications" ON public.notifications FOR SELECT USING (true);
+        CREATE POLICY "Allow public update notifications" ON public.notifications FOR UPDATE USING (true);
+        CREATE POLICY "Allow public insert notifications" ON public.notifications FOR INSERT WITH CHECK (true);
     END IF;
 END $$;

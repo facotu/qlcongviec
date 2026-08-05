@@ -112,3 +112,41 @@ export interface RagQueryResult {
   score: number;
   metadata?: Record<string, unknown>;
 }
+
+// Bitrix24 Chat & Messaging Center Interfaces
+export type ChannelType = 'bot' | 'news' | 'general' | 'notes' | 'task' | 'direct';
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  type: ChannelType;
+  avatarUrl?: string;
+  description?: string;
+  unreadCount?: number;
+  latestMessage?: string;
+  latestTime?: string;
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  senderName: string;
+  senderAvatar?: string;
+  content: string;
+  isAi?: boolean;
+  createdAt: string;
+}
+
+// Notification System Interfaces
+export type NotificationType = 'task' | 'timer' | 'rag' | 'system' | 'message';
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  content: string;
+  type: NotificationType;
+  isRead: boolean;
+  linkUrl?: string;
+  createdAt: string;
+}
