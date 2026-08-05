@@ -381,7 +381,7 @@ export default function Bitrix24MessengerPage() {
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-xs text-slate-200">{n.title}</h3>
-                        <span className="text-[10px] text-slate-500 font-mono">
+                        <span className="text-[10px] text-slate-500 font-mono" suppressHydrationWarning>
                           {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
@@ -437,14 +437,14 @@ export default function Bitrix24MessengerPage() {
               <div className="p-4 border-b border-slate-800 light:border-slate-200 bg-slate-900/60 light:bg-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
-                    {selectedChannel?.name.slice(0, 2).toUpperCase()}
+                    {(selectedChannel?.name || "BX").slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <h2 className="text-xs font-bold text-slate-100 light:text-slate-900">
-                      {selectedChannel?.name}
+                      {selectedChannel?.name || "Cuộc trò chuyện"}
                     </h2>
                     <p className="text-[11px] text-slate-400 light:text-slate-500">
-                      {selectedChannel?.description}
+                      {selectedChannel?.description || "Kênh nhắn tin Bitrix24"}
                     </p>
                   </div>
                 </div>
@@ -473,14 +473,14 @@ export default function Bitrix24MessengerPage() {
                     <div
                       key={msg.id}
                       className={`flex items-start gap-3 ${
-                        msg.isAi || msg.senderName.includes("Bot") || msg.senderName.includes("CoPilot")
+                        msg.isAi || (msg.senderName && (msg.senderName.includes("Bot") || msg.senderName.includes("CoPilot")))
                           ? ""
                           : "flex-row-reverse"
                       }`}
                     >
                       {/* Avatar */}
                       <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {msg.isAi ? <Bot className="w-4 h-4 text-purple-400" /> : msg.senderName.slice(0, 1)}
+                        {msg.isAi ? <Bot className="w-4 h-4 text-purple-400" /> : (msg.senderName || "U").slice(0, 1)}
                       </div>
 
                       {/* Bubble */}
@@ -497,7 +497,7 @@ export default function Bitrix24MessengerPage() {
                         >
                           {msg.content}
                         </div>
-                        <span className="text-[9px] text-slate-500 font-mono block px-1">
+                        <span className="text-[9px] text-slate-500 font-mono block px-1" suppressHydrationWarning>
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
